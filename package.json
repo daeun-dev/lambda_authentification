@@ -1,7 +1,5 @@
 {
   "dependencies": {
-    "ioredis": "^4.27.2",
-    "jwt-simple": "^0.5.6",
-    "lambda-api": "^0.10.7"
+    "ioredis": "^4.27.2"
   }
 }

@@ -1,5 +1,5 @@
 var Redis = require('ioredis');
-var jwt = require('jwt-simple');
+// var jwt = require('jwt-simple');
 
 exports.handler =  function(event, context, callback) {
     var token = event.authorizationToken;
@@ -7,34 +7,21 @@ exports.handler =  function(event, context, callback) {
 
     if(token){
         var redis = new Redis(6379,'w-awps-di-an2-ecrds-dev-dxp.wimlsn.0001.apn2.cache.amazonaws.com');
-        var hour = 3600000;
+        //var hour = 3600000;
 
-        redis.get(token, function (err, result) {
-            if (err){
-                console.error(err);
-                callback("Error: Invalid token");  
-                break;
-            }else {
-
-                //token validation check
+        if(redis.exists(token)===1){
+         //redis.get(token, function (err, result) {
         
-                if(result){
-                    //allow
-                    console.log(result);
-                    break;
-                }else{
-                    //deny
-                    callback("Unauthorized");   
-                    break;
-                }
-            }
-         });
+        }else{
+           callback("Error: Invalid token");   
+           break;
+        }
    
         redis.set(token, {"password" : password,"expires" : new Date(Date.now() + hour)});
     }else{
 
-        callback("Unauthorized");   
-        break;
+      callback(null, generatePolicy('user', 'Deny', event.methodArn));
+       break;
 
     }
     
@@ -85,9 +72,9 @@ var generatePolicy = function(principalId, effect, resource) {
     
     // Optional output with custom properties of the String, Number or Boolean type.
     authResponse.context = {
-        "stringKey": "stringval",
-        "numberKey": 123,
-        "booleanKey": true
+        // "stringKey": "stringval",
+        // "numberKey": 123,
+        // "booleanKey": true
     };
     return authResponse;
 }
