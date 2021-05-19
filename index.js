@@ -1,10 +1,9 @@
 var Redis = require('ioredis');
-//var jwt = require('jwt-simple');
-
+var jwt = require('jwt-simple');
 var redis = new Redis(6379,'w-awps-di-an2-ecrds-dev-dxp.wimlsn.0001.apn2.cache.amazonaws.com');
  
 exports.handler =  function(event, context, callback) {
-    var expireTm = 3600; // 1hour
+    var expireTm = 3600;
     var token = event.authorizationToken;
     var id = event.body.id;
 
@@ -12,25 +11,34 @@ exports.handler =  function(event, context, callback) {
     // var secret = 'abc';
     // var token = jwt.encode(payload, secret);
     // var id = "ddxp";
+
     // redis.set(token, id, 'EX', expireTm);
     
     if(token){
         
-        redis.get(token).then(function (err, result) {
+        redis.get(token, function (err, result) {
             if (err) {
                 console.error(err);
                 callback("Error: Invalid user");
             } else {
                 if (id === result) {
+                    
                     redis.ttl(token).then(function (leftTm) {
-                        
-                        if (leftTm > 0 && leftTm < expireTm) {
+                    
+                        if (leftTm > 0 && leftTm <= expireTm) {
                             redis.set(token, id, 'EX', expireTm);
+
+                            // redis.ttl(token).then(function (result) {
+                            //     console.log("pass222:" + result);
+                            //     console.log("success");
+                            // });
+                            
                             callback(null, generatePolicy('user', 'Allow', event.methodArn));
+                            
                         } else {
+                            console.log("error");
                             callback(null, generatePolicy('user', 'Deny', event.methodArn));
                         }
- 
                     });
                 } else {
                     callback("Error: Invalid token");
@@ -38,14 +46,10 @@ exports.handler =  function(event, context, callback) {
             }
         });
 
-
     }else{
         callback("Unauthorized");   
     }
-    
 };
-
-
 
 // Help function to generate an IAM policy
 var generatePolicy = function(principalId, effect, resource) {
@@ -72,4 +76,3 @@ var generatePolicy = function(principalId, effect, resource) {
     // };
     return authResponse;
 }
-
