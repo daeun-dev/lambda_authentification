@@ -1,69 +1,50 @@
 var Redis = require('ioredis');
-var jwt = require('jwt-simple');
+//var jwt = require('jwt-simple');
 
+var redis = new Redis(6379,'w-awps-di-an2-ecrds-dev-dxp.wimlsn.0001.apn2.cache.amazonaws.com');
+ 
 exports.handler =  function(event, context, callback) {
+    var expireTm = 3600; // 1hour
     var token = event.authorizationToken;
     var id = event.body.id;
 
+    // var payload = { foo: 'bar' };
+    // var secret = 'abc';
+    // var token = jwt.encode(payload, secret);
+    // var id = "ddxp";
+    // redis.set(token, id, 'EX', expireTm);
+    
     if(token){
-        var redis = new Redis(6379,'w-awps-di-an2-ecrds-dev-dxp.wimlsn.0001.apn2.cache.amazonaws.com');
-        var hour = 3600000;
-
-        redis.get(token, function (err, result) {
-            if (err){
-                console.error(err);
-                callback("Error: Invalid token");  
-                break;
-            }else {
-
-                //token validation check
         
-                if(result){
-                    //allow
-                    console.log(result);
-                    break;
-                }else{
-                    //deny
-                    callback("Unauthorized");   
-                    break;
+        redis.get(token).then(function (err, result) {
+            if (err) {
+                console.error(err);
+                callback("Error: Invalid user");
+            } else {
+                if (id === result) {
+                    redis.ttl(token).then(function (leftTm) {
+                        
+                        if (leftTm > 0 && leftTm < expireTm) {
+                            redis.set(token, id, 'EX', expireTm);
+                            callback(null, generatePolicy('user', 'Allow', event.methodArn));
+                        } else {
+                            callback(null, generatePolicy('user', 'Deny', event.methodArn));
+                        }
+ 
+                    });
+                } else {
+                    callback("Error: Invalid token");
                 }
             }
-         });
-   
-        redis.set(token, {"password" : password,"expires" : new Date(Date.now() + hour)});
+        });
+
+
     }else{
-
         callback("Unauthorized");   
-        break;
-
     }
     
-   
-
-    
-    redis.get(token, function (err, result) {
-        if (err) 
-          console.error(err);
-        else 
-          console.log(result);
-        client.quit(()=> {
-          callback(err, {body: "Result :"+result});
-      });
-      })
-    // switch (token) {
-    //     case 'allow':
-    //         callback(null, generatePolicy('user', 'Allow', event.methodArn));
-    //         break;
-    //     case 'deny':
-    //         callback(null, generatePolicy('user', 'Deny', event.methodArn));
-    //         break;l
-    //     case 'unauthorized':
-    //         callback("Unauthorized");   // Return a 401 Unauthorized response
-    //         break;
-    //     default:
-    //         callback("Error: Invalid token"); // Return a 500 Invalid token response
-    // }
 };
+
 
 
 // Help function to generate an IAM policy
@@ -84,45 +65,11 @@ var generatePolicy = function(principalId, effect, resource) {
     }
     
     // Optional output with custom properties of the String, Number or Boolean type.
-    authResponse.context = {
-        "stringKey": "stringval",
-        "numberKey": 123,
-        "booleanKey": true
-    };
+    // authResponse.context = {
+    //     "stringKey": "stringval",
+    //     "numberKey": 123,
+    //     "booleanKey": true
+    // };
     return authResponse;
 }
 
-
-
-
-
-/*var Redis = require('ioredis');
-
-exports.handler = (event, context, callback) => {
-var client = new Redis(6379,'w-awps-di-an2-ecrds-dev-dxp.wimlsn.0001.apn2.cache.amazonaws.com');
-
-
-var id = event.id;
-var password = event.password;
-
-client.set(id, {"password" : password}, (error, result) => {
-if(error)
-	console.info("error =", error);
-else
-	console.info("result:::", result);
-client.quit(()=> {
-	callback(error, {body: "Result :"+result});
-});
-
-})
-client.set(id, password);
-client.get(id, function (err, result) {
-  if (err) 
-    console.error(err);
-  else 
-    console.log(result);
-  client.quit(()=> {
-	callback(err, {body: "Result :"+result});
-});
-})
-}*/
